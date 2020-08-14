@@ -1,100 +1,145 @@
 <!DOCTYPE html>
 <head>
     <script>
-        var data;
-        window.onload = function () {
-            data = csvJSON(readFile("sp-pos-quot-fra-2020-08-13-19h15.csv"))
-            data.forEach((e) => {
-                //parse the x and y axis so that canvasJs is happy
-                e.P = Number(e.P)
-                var date = e.jour.split("/")
-                e.jour = new Date(date[2], date[1] - 1, date[0]) //months start at 0
-                //rename the keys of the object to x and y for canvasJs
-                let old_key = "jour"
-                let new_key = "x"
-                if (old_key !== new_key) {
-                    Object.defineProperty(e, new_key,
-                        Object.getOwnPropertyDescriptor(e, old_key));
-                    delete e[old_key];
-                }
-                old_key = "P"
-                new_key = "y"
-                if (old_key !== new_key) {
-                    Object.defineProperty(e, new_key,
-                        Object.getOwnPropertyDescriptor(e, old_key));
-                    delete e[old_key];
-                }
-                //delete data not used
-                delete e.fra;
-                delete e.P_f;
-                delete e.P_h;
-                delete e.T;
-                delete e.T_f;
-                delete e.T_h;
+    var data;
+    window.onload = function () {
+        data = csvJSON(readFile("sp-pos-quot-fra-2020-08-13-19h15.csv"))
+        data.forEach((e) => {
+            //parse the x and y axis so that canvasJs is happy
+            e.P = Number(e.P)
+            var date = e.jour.split("/")
+            e.jour = new Date(date[2], date[1] - 1, date[0]) //months start at 0
+            //rename the keys of the object to x and y for canvasJs
+            let old_key = "jour"
+            let new_key = "x"
+            if (old_key !== new_key) {
+                Object.defineProperty(e, new_key,
+                    Object.getOwnPropertyDescriptor(e, old_key));
+                delete e[old_key];
+            }
+            old_key = "P"
+            new_key = "y"
+            if (old_key !== new_key) {
+                Object.defineProperty(e, new_key,
+                    Object.getOwnPropertyDescriptor(e, old_key));
+                delete e[old_key];
+            }
+            //delete data not used
+            delete e.fra;
+            delete e.P_f;
+            delete e.P_h;
+            delete e.T;
+            delete e.T_f;
+            delete e.T_h;
+        })
+        renderCovidxAgeLine()
+        renderCovidxAgeColumn()
+    }
+    function renderCovidxAgeColumn() {
+        var classeAgeList = [9,19,29,39,49,59,69,79,89,90]
+        var couleurs = {9:"#db911c", 19:"#73ae31", 29:"#db35e2", 39:"#a423d9", 49:"#e44864", 59:"#92aa4e", 69:"#5774a2", 79:"#ea92a6", 89:"#6f5390", 90:"#1d7f44"}
+        var dataSeries = [] 
+        classeAgeList.forEach(clage => {
+            dataSeries.push({
+                type: "stackedColumn",
+                showInLegend: true,
+                color: couleurs[clage],
+                name: "" + clage,
+                dataPoints: data.filter(e => e.cl_age90 == clage)
             })
-            loadChart()
+        })
+        console.log(dataSeries)
+        var chart = new CanvasJS.Chart("chartContainerColumn", {
+            height:500,
+            animationEnabled: true,
+            zoomEnabled: true,
+            title: {
+                text: "Covid by age FR but in columns",
+            },
+            toolTip: {
+                shared: true,
+                content: toolTipContent
+            },
+            data: dataSeries
+        });
+        chart.render();
+
+
+    }
+    function toolTipContent(e) {
+        var str = "";
+        var total = 0;
+        var str2, str3;
+        for (var i = 0; i < e.entries.length; i++) {
+            var str1 = "<span style= \"color:" + e.entries[i].dataSeries.color + "\"> " + e.entries[i].dataSeries.name + "</span>: <strong>" + e.entries[i].dataPoint.y + "</strong><br/>";
+            total = e.entries[i].dataPoint.y + total;
+            str = str.concat(str1);
         }
-        function loadChart(){
-            var classeAgeList = [0, 9,19,29,39,49,59,69,79,89,90]
-            var dataSeries = [];
-            classeAgeList.forEach(classeAge => {
-                dataSeries.push({
-                    type: "line",
-                    axisYType: "secondary",
-                    name: "classe " + classeAge,
-                    showInLegend: true,
-                    markerSize: 0,
-                    dataPoints: data.filter(e => e.cl_age90 == classeAge)
-                })
+        str2 = "<span style = \"color:DodgerBlue;\"><strong>" + (e.entries[0].dataPoint.x).toLocaleDateString() + "</strong></span><br/>";
+        total = Math.round(total * 100) / 100;
+        str3 = "<span style = \"color:Tomato\">Total:</span><strong> " + total + "</strong><br/>";
+        return (str2.concat(str)).concat(str3);
+    }
+    function renderCovidxAgeLine(){
+        var classeAgeList = [9,19,29,39,49,59,69,79,89,90]
+        var dataSeries = [];
+        classeAgeList.forEach(classeAge => {
+            dataSeries.push({
+                type: "line",
+                axisYType: "secondary",
+                name: "classe " + classeAge,
+                showInLegend: true,
+                markerSize: 0,
+                dataPoints: data.filter(e => e.cl_age90 == classeAge)
             })
-            console.log(dataSeries)
-            var chart = new CanvasJS.Chart("chartContainer", {
-                height:500,
-                animationEnabled: true,
-                zoomEnabled: true,
-                theme: "light2",
-                title: {
-                    text: "Covid by age FR"
-                },
-                toolTip: {
-                    shared:true
-                },
-                axisY2: {
-                    title: "Test positif"
-                },
-                data: dataSeries
-            });
-            chart.render();
-        }
-        //var csv is the CSV file with headers
-        function csvJSON(csv) {
-            var lines = csv.split("\n");
+        })
+        var chart = new CanvasJS.Chart("chartContainerLine", {
+            height:500,
+            animationEnabled: true,
+            zoomEnabled: true,
+            theme: "light2",
+            title: {
+                text: "Covid by age FR"
+            },
+            toolTip: {
+                shared:true
+            },
+            axisY2: {
+                title: "Test positif"
+            },
+            data: dataSeries
+        });
+        chart.render();
+    }
+    //var csv is the CSV file with headers
+    function csvJSON(csv) {
+        var lines = csv.split("\n");
 
-            var result = [];
+        var result = [];
 
-            // NOTE: If your columns contain commas in their values, you'll need
-            // to deal with those before doing the next step 
-            // (you might convert them to &&& or something, then covert them back later)
-            // jsfiddle showing the issue https://jsfiddle.net/
-            var headers = lines[0].split(";");
+        // NOTE: If your columns contain commas in their values, you'll need
+        // to deal with those before doing the next step 
+        // (you might convert them to &&& or something, then covert them back later)
+        // jsfiddle showing the issue https://jsfiddle.net/
+        var headers = lines[0].split(";");
 
-            for (var i = 1; i < lines.length; i++) {
+        for (var i = 1; i < lines.length; i++) {
 
-                var obj = {};
-                var currentline = lines[i].split(";");
+            var obj = {};
+            var currentline = lines[i].split(";");
 
-                for (var j = 0; j < headers.length; j++) {
-                    obj[headers[j]] = currentline[j];
-                }
-
-                result.push(obj);
-
+            for (var j = 0; j < headers.length; j++) {
+                obj[headers[j]] = currentline[j];
             }
 
-            return result; //JavaScript object
-            //return JSON.stringify(result); //JSON
+            result.push(obj);
+
         }
-        function readFile(filename){
+
+        return result; //JavaScript object
+        //return JSON.stringify(result); //JSON
+    }
+    function readFile(filename){
             return `fra;jour;P_f;P_h;P;T_f;T_h;T;cl_age90
 FR;13/05/2020;7;6;13;599;645;1276;9
 FR;13/05/2020;21;7;28;856;808;1684;19
@@ -1090,7 +1135,9 @@ FR;10/08/2020;1308;1300;2609;51096;46141;97453;0`
     </script>
 </head>
 <body>
-    <div id="chartContainer" style="height: 500px; width: 100%;">
+    <div id="chartContainerLine" style="height: 500px; width: 100%;">
+    </div>
+    <div id="chartContainerColumn" style="height: 500px; width: 100%;">
     </div>
     <div id="commentaire">
     <p>Source :<a href="https://www.data.gouv.fr/fr/datasets/donnees-relatives-aux-resultats-des-tests-virologiques-covid-19/">https://www.data.gouv.fr/fr/datasets/donnees-relatives-aux-resultats-des-tests-virologiques-covid-19/</a> <a/></p>
